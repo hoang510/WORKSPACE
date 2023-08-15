@@ -21,12 +21,12 @@ int main()
     freopen("SOMM.INP", "r", stdin);
     freopen("SOMM.OUT", "w", stdout);
 
-    int p, q;
-    cin >> p >> q;
+    int p, q, k;
+    cin >> p >> q >> k;
     int result = 0;
     for (int i = p; i <= q; i++)
     {
-        if (sumDigits(i) % 3 == 0)
+        if (sumDigits(i) % k == 0)
             result++;
     }
 

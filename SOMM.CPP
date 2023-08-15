@@ -74,6 +74,7 @@ public:
 protected:
     const int modulo;
 };
+
 string toNumber(vector<Digit> a, int i)
 {
     string result = "";
@@ -90,25 +91,28 @@ class Solve : private Modulus
 public:
     Solve(int modulo) : Modulus(modulo), ref(buildDigitsRef()), frequencyTable(buildFrequencyTable(10)) {}
 
-    long long countMid(int i, Digit l, Digit r) const
+    long long countMid(int i, Digit l, Digit r, Number remain) const
     {
-
+        if (!(l >= 0 && l <= r && r <= 9))
+            return 0;
         const auto &r_l = ref[l];
         const auto &r_r = ref[r];
 
         if (i-- == 0)
         {
-            return (r_r.first - r_l.first) + (r_l.second == 0);
+            Number d_l = minus(remain, r_r.second);
+            Number d_r = minus(remain, r_l.second);
+            return (r_r.first - r_l.first) + (d_l == 0 || d_l > d_r); 
         }
 
-        return frequencyTable[i].sumRound() * (r_r.first - r_l.first) +
-               frequencyTable[i].sum(minus(0, r_r.second), minus(0, r_l.second));
+        return 
+               frequencyTable[i].sum(minus(remain, r_r.second), minus(remain, r_l.second));
     }
 
     long long countBottom(const vector<Digit> &a, int i, int remain) const
     {
         long long bottom = (i > 0 ? countBottom(a, i - 1, minus(remain, ref[a[i]].second)) : 0);
-        long long mid = (a[i] != 9 ? countMid(i, a[i] + 1, 9) : 0);
+        long long mid = (countMid(i, a[i] + (i > 0), 9, remain));
 
 #ifdef DEBUG_MODE
         cerr << '\n'
@@ -124,7 +128,7 @@ public:
     {
 
         long long top = (i > 0 ? countTop(a, i - 1, minus(remain, ref[a[i]].second)) : 0);
-        long long mid = (a[i] != 0 ? countMid(i, 0, a[i] - 1) : 0);
+        long long mid = (countMid(i, 0, a[i] - (i > 0),remain));
 
 #ifdef DEBUG_MODE
         cerr << '\n'
@@ -140,7 +144,7 @@ public:
     {
         if (a[i] == b[i])
             return countBoth(a, b, i - 1, minus(remain, ref[a[i]].second));
-        long long mid = (a[i] < b[i] + 1 ? countMid(i, a[i] + 1, b[i] - 1) : 0);
+        long long mid = (countMid(i, a[i] + 1, b[i] - 1, remain));
         long long bottom(i > 0 ? countBottom(a, i - 1, minus(remain, ref[a[i]].second)) : 0);
         long long top = (i > 0 ? countTop(b, i - 1, minus(remain, ref[b[i]].second))
                                : 0);

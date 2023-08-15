@@ -2,10 +2,21 @@
 #include <iostream>
 #include <numeric>
 
-// #define DEBUG_MODE
+#define DEBUG_MODE
 
 using namespace std;
 
+
+string toNumber(vector<int> a, int i)
+{
+    string result = "";
+    for (int j = 0; j <= i; j++)
+    {
+        result = to_string(a[j]) + result;
+    }
+
+    return result;
+}
 struct InstantSum
 {
 public:
@@ -91,6 +102,16 @@ long long count(const vector<int> &a, const vector<int> &b, int i, int k)
     long long middle = table[i - 1].sum(max(k - (b[i] - 1), 0), k - (a[i] + 1));
     long long right = count(temp0, b, i - 1, k - b[i]);
 
+    
+#ifdef DEBUG_MODE
+        cerr << '\n'
+             << " - Both side: " << toNumber(a, i) << ' ' << toNumber(b, i) <<'\n';
+             cerr << "Remain: " << k << '\n';
+        cerr << "Top: " << left << '\n';
+        cerr << "Mid: " << middle << "\n";
+        cerr << "Bottom: " << right << '\n';
+#endif
+
     return left + middle + right;
 }
 
@@ -101,6 +122,7 @@ int main()
 
     freopen("SOMM.INP", "r", stdin);
     freopen("SOMM.OUT", "w", stdout);
+    freopen("R_ERR.log", "w", stderr);
 
     int p, q, k;
     cin >> p >> q >> k;
