@@ -2,7 +2,7 @@
 #include <iostream>
 #include <numeric>
 
-// #define DEBUG_MODE
+#define DEBUG_MODE
 
 using namespace std;
 
@@ -17,16 +17,27 @@ public:
         partial_sum(inputArray.begin(), inputArray.end(), data.begin());
     }
 
-    inline long long sum(int l, int r)
+    inline long long sum(int l, int r) const
     {
-        if (l < 0 || l >= data.size())
+        const auto &data = this->data;
+        if (l < 0 || l >= this->size)
             throw "Invalid Argument";
         return data[min(r, size - 1)] - (l > 0 ? data[l - 1] : 0);
     }
 
-    inline long long sumRound()
+    inline long long sumRound() const
     {
         return data.back();
+    }
+
+    void print(string Label)
+    {
+        cerr << Label << ": "; 
+        for (auto i : data)
+        {
+            cerr << i << ' ';
+        }
+        cerr << '\n';
     }
 
 private:
@@ -39,13 +50,12 @@ typedef char Digit;
 class Modulus
 {
 public:
-    Modulus(int modulo)
-    {
-        this->modulo = modulo;
-    }
     typedef int Number;
+    Modulus(int modulo) : modulo(modulo)
+    {
+    }
 
-    inline int plus(Number a, Number b)
+    inline int plus(Number a, Number b) const
     {
         Number result = a + b;
         if (result >= modulo)
@@ -53,7 +63,7 @@ public:
         return result;
     }
 
-    inline int minus(Number a, Number b)
+    inline int minus(Number a, Number b) const
     {
         Number result = a - b;
         if (result < 0)
@@ -61,62 +71,109 @@ public:
         return result;
     }
 
-    inline pair<int, Number> ref(Digit a)
+protected:
+    const int modulo;
+};
+string toNumber(vector<Digit> a, int i)
+{
+    string result = "";
+    for (int j = 0; j <= i; j++)
     {
-        static auto data = buildDigitsRef();
-        return data[a];
+        result = to_string(a[j]) + result;
     }
 
-    auto buildFrequencyTable(int n)
+    return result;
+}
+
+class Solve : private Modulus
+{
+public:
+    Solve(int modulo) : Modulus(modulo), ref(buildDigitsRef()), frequencyTable(buildFrequencyTable(10)) {}
+
+    long long countMid(int i, Digit l, Digit r) const
+    {
+
+        const auto &r_l = ref[l];
+        const auto &r_r = ref[r];
+
+        if (i-- == 0)
+        {
+            return (r_r.first - r_l.first) + (r_l.second == 0);
+        }
+
+        return frequencyTable[i].sumRound() * (r_r.first - r_l.first) +
+               frequencyTable[i].sum(minus(0, r_r.second), minus(0, r_l.second));
+    }
+
+    long long countBottom(const vector<Digit> &a, int i, int remain) const
+    {
+        long long bottom = (i > 0 ? countBottom(a, i - 1, minus(remain, ref[a[i]].second)) : 0);
+        long long mid = (a[i] != 9 ? countMid(i, a[i] + 1, 9) : 0);
+
+#ifdef DEBUG_MODE
+        cerr << '\n'
+             << " - Left side: " << toNumber(a, i) << '\n';
+             cerr << "Remain: " << remain << '\n';
+        cerr << "Bottom: " << bottom << '\n';
+        cerr << "Mid: " << mid << "\n";
+#endif
+        return bottom + mid;
+    }
+
+    long long countTop(const vector<Digit> &a, int i, int remain) const
+    {
+
+        long long top = (i > 0 ? countTop(a, i - 1, minus(remain, ref[a[i]].second)) : 0);
+        long long mid = (a[i] != 0 ? countMid(i, 0, a[i] - 1) : 0);
+
+#ifdef DEBUG_MODE
+        cerr << '\n'
+             << " - Right side: " << toNumber(a, i) << '\n';
+             cerr << "Remain: " << remain << '\n';
+        cerr << "Top: " << top << '\n';
+        cerr << "Mid: " << mid << "\n";
+#endif
+        return top + mid;
+    }
+
+    long long countBoth(const vector<Digit> &a, const vector<Digit> &b, int i, int remain) const
+    {
+        if (a[i] == b[i])
+            return countBoth(a, b, i - 1, minus(remain, ref[a[i]].second));
+        long long mid = (a[i] < b[i] + 1 ? countMid(i, a[i] + 1, b[i] - 1) : 0);
+        long long bottom(i > 0 ? countBottom(a, i - 1, minus(remain, ref[a[i]].second)) : 0);
+        long long top = (i > 0 ? countTop(b, i - 1, minus(remain, ref[b[i]].second))
+                               : 0);
+
+#ifdef DEBUG_MODE
+        cerr << '\n'
+             << " - Both side: " << toNumber(a, i) << ' ' << toNumber(b, i) <<'\n';
+             cerr << "Remain: " << remain << '\n';
+        cerr << "Top: " << top << '\n';
+        cerr << "Mid: " << mid << "\n";
+        cerr << "Bottom: " << bottom << '\n';
+#endif
+        return top + mid + bottom;
+    }
+
+private:
+    vector<InstantSum> buildFrequencyTable(int n) const
     {
         vector<InstantSum> data(n);
 
         vector<long long> a(1, 1);
         for (int i = 0; i < n; i++)
         {
-            data[i] = InstantSum(buildA(a));
+            a = move(buildA(a));
+            data[i] = InstantSum(a);
+            #ifdef DEBUG_MODE
+                data[i].print("Data " + to_string(i));
+            #endif
         }
         return data;
     }
 
-    long long countMid(int i, Digit l, Digit r)
-    {
-        static auto data = buildFrequencyTable(10);
-        auto r_l = ref(l);
-        auto r_r = ref(r);
-
-        if (i == -1)
-        {
-            return (r_r.first - r_l.first) + (r_l.second == 0);
-        }
-
-        return data[i].sumRound() * (r_r.first - r_l.first) + data[i].sum(minus(0, r_r.second), minus(0, r_l.second));
-    }
-
-    long long countBottom(const vector<Digit> &a, int i, int remain)
-    {
-        return (i > 0 ? countBottom(a, i - 1, minus(remain, ref(a[i]).second)) : 0) +
-               (a[i] != 9 ? countMid(i - 1, a[i] + 1, 9) : 0);
-    }
-
-    long long countTop(const vector<Digit> &a, int i, int remain)
-    {
-        return (i > 0 ? countTop(a, i - 1, minus(remain, ref(a[i]).second)) : 0) +
-               (a[i] != 0 ? countMid(i - 1, 0, a[i] - 1) : 0);
-    }
-
-    long long countBoth(const vector<Digit> &a, const vector<Digit> &b, int i, int remain)
-    {
-        if (a[i] == b[i])
-            return countBoth(a, b, i - 1, minus(remain, ref(a[i]).second));
-
-        return countBottom(a, i - 1, minus(remain, ref(a[i]).second)) +
-               countMid(i - 1, a[i] + 1, b[i] - 1) +
-               countTop(b, i - 1, minus(remain, ref(b[i]).second));
-    }
-
-private:
-    vector<pair<int, Number>> buildDigitsRef()
+    vector<pair<int, Number>> buildDigitsRef() const
     {
         vector<pair<int, Number>> data(10);
         for (int i = 0; i < 10; i++)
@@ -127,21 +184,24 @@ private:
         return data;
     }
 
-    vector<long long> buildA(const vector<long long> &a)
+    vector<long long> buildA(const vector<long long> &a) const
     {
-        vector<long long> result(min(int(a.size()) + 9, modulo), 0);
+        vector<long long> result(modulo, 0);
         for (Digit i = 0; i < 10; i++)
         {
             for (Number j = 0; j < a.size(); j++)
             {
-                result[plus(ref(i).second, j)] += a[j];
+                result[plus(ref[i].second, j)] += a[j];
             }
         }
 
         return result;
     }
-    int modulo;
+
+    const vector<pair<int, Number>> ref;
+    const vector<InstantSum> frequencyTable;
 };
+
 
 auto splitNumber(int n)
 {
@@ -171,7 +231,7 @@ int main()
     auto l = splitNumber(p);
     auto r = splitNumber(q);
 
-    cout << Modulus(k).countBoth(l, r, 9, 0);
+    cout << Solve(k).countBoth(l, r, 9, 0);
 
     return 0;
 }
