@@ -12,74 +12,140 @@ public:
     InstantSum() {}
     InstantSum(const vector<long long> &inputArray)
     {
-        this->data.resize(inputArray.size());
+        size = inputArray.size();
+        this->data.resize(size);
         partial_sum(inputArray.begin(), inputArray.end(), data.begin());
     }
 
-    long long sum(int l, int r)
+    inline long long sum(int l, int r)
     {
-        if (r >= this->size())
-            r = this->size() - 1;
-        if (l > r)
-            return 0;
-#ifdef DEBUG_MODE
-        if (!(l >= 0))
-            throw("Invalid parameters");
-#endif
-        return this->data[r] - (l != 0 ? this->data[l - 1] : 0);
+        if (l < 0 || l >= data.size())
+            throw "Invalid Argument";
+        return data[min(r, size - 1)] - (l > 0 ? data[l - 1] : 0);
     }
 
-    long long at(int i)
+    inline long long sumRound()
     {
-        return this->sum(i, i);
-    }
-    inline int size()
-    {
-        return data.size();
+        return data.back();
     }
 
-#ifdef DEBUG_MODE
-    void print_out()
-    {
-        cerr << "DATA: ";
-        for (auto i : data)
-        {
-            cerr << i << ' ';
-        }
-        cerr << '\n';
-    }
-#endif
-
+private:
     vector<long long> data;
+    int size;
 };
 
-auto buildFrequencyTable(int n)
+typedef char Digit;
+
+class Modulus
 {
-    vector<InstantSum> data(n);
-
-    vector<long long> a, b;
-    a = vector<long long>(10, 1);
-    data[0] = InstantSum(a);
-
-    for (int i = 1; i < n; i++)
+public:
+    Modulus(int modulo)
     {
-        b = move(a);
-        a.assign(b.size() + 9, 0);
+        this->modulo = modulo;
+    }
+    typedef int Number;
+
+    inline int plus(Number a, Number b)
+    {
+        Number result = a + b;
+        if (result >= modulo)
+            result -= modulo;
+        return result;
+    }
+
+    inline int minus(Number a, Number b)
+    {
+        Number result = a - b;
+        if (result < 0)
+            result += modulo;
+        return result;
+    }
+
+    inline pair<int, Number> ref(Digit a)
+    {
+        static auto data = buildDigitsRef();
+        return data[a];
+    }
+
+    auto buildFrequencyTable(int n)
+    {
+        vector<InstantSum> data(n);
+
+        vector<long long> a(1, 1);
+        for (int i = 0; i < n; i++)
+        {
+            data[i] = InstantSum(buildA(a));
+        }
+        return data;
+    }
+
+    long long countMid(int i, Digit l, Digit r)
+    {
+        static auto data = buildFrequencyTable(10);
+        auto r_l = ref(l);
+        auto r_r = ref(r);
+
+        if (i == -1)
+        {
+            return (r_r.first - r_l.first) + (r_l.second == 0);
+        }
+
+        return data[i].sumRound() * (r_r.first - r_l.first) + data[i].sum(minus(0, r_r.second), minus(0, r_l.second));
+    }
+
+    long long countBottom(const vector<Digit> &a, int i, int remain)
+    {
+        return (i > 0 ? countBottom(a, i - 1, minus(remain, ref(a[i]).second)) : 0) +
+               (a[i] != 9 ? countMid(i - 1, a[i] + 1, 9) : 0);
+    }
+
+    long long countTop(const vector<Digit> &a, int i, int remain)
+    {
+        return (i > 0 ? countTop(a, i - 1, minus(remain, ref(a[i]).second)) : 0) +
+               (a[i] != 0 ? countMid(i - 1, 0, a[i] - 1) : 0);
+    }
+
+    long long countBoth(const vector<Digit> &a, const vector<Digit> &b, int i, int remain)
+    {
+        if (a[i] == b[i])
+            return countBoth(a, b, i - 1, minus(remain, ref(a[i]).second));
+
+        return countBottom(a, i - 1, minus(remain, ref(a[i]).second)) +
+               countMid(i - 1, a[i] + 1, b[i] - 1) +
+               countTop(b, i - 1, minus(remain, ref(b[i]).second));
+    }
+
+private:
+    vector<pair<int, Number>> buildDigitsRef()
+    {
+        vector<pair<int, Number>> data(10);
         for (int i = 0; i < 10; i++)
         {
-            for (int j = 0; j < b.size(); j++)
+            data[i] = {i / modulo, i % modulo};
+        }
+
+        return data;
+    }
+
+    vector<long long> buildA(const vector<long long> &a)
+    {
+        vector<long long> result(min(int(a.size()) + 9, modulo), 0);
+        for (Digit i = 0; i < 10; i++)
+        {
+            for (Number j = 0; j < a.size(); j++)
             {
-                a[i + j] += b[j];
+                result[plus(ref(i).second, j)] += a[j];
             }
         }
-        data[i] = InstantSum(a);
+
+        return result;
     }
-    return data;
-}
+    int modulo;
+};
 
 auto splitNumber(int n)
 {
-    vector<int> data(10);
+    vector<Digit> data(10);
     int i = 0;
     while (n != 0)
     {
@@ -88,72 +154,6 @@ auto splitNumber(int n)
         i++;
     }
     return data;
-}
-
-#ifdef DEBUG_MODE
-template <typename T>
-void printArr(T *beg, T *en)
-{
-    for (auto i = beg; i != en; i++)
-    {
-        cerr << *i << ' ';
-    }
-}
-
-string toNumber(const vector<int> &a, int i)
-{
-    string result = "";
-    for (int j = i; j >= 0; j--)
-    {
-        result += to_string(a[j]);
-    }
-
-    return result;
-}
-#endif
-
-long long count(const vector<int> &a, const vector<int> &b, int i, int k)
-{
-    static const vector<int> temp9(10, 9);
-    static const vector<int> temp0(10, 0);
-    static auto table = buildFrequencyTable(10);
-#ifdef DEBUG_MODE
-    static int isFirstTime = true;
-    if (isFirstTime)
-    {
-        for (auto i : table)
-        {
-            i.print_out();
-        }
-        isFirstTime = false;
-    }
-#endif
-
-    long long result;
-    if (k < 0)
-        return 0;
-    else if (i == 0)
-        return ((a[i] <= k && k <= b[i]) ? 1 : 0);
-    else if (a[i] == b[i])
-        result = count(a, b, i - 1, k - a[i]);
-    else
-    {
-        long long left = count(a, temp9, i - 1, k - a[i]);
-        long long middle =
-            table[i - 1].sum(max(k - (b[i] - 1), 0), k - (a[i] + 1));
-        long long right = count(temp0, b, i - 1, k - b[i]);
-#ifdef DEBUG_MODE
-        cerr << '\n'
-             << "Left: " << left << "\nMiddle: " << middle << "\nRight: " << right;
-#endif
-        result = left + middle + right;
-    }
-
-#ifdef DEBUG_MODE
-    cerr << '\n'
-         << "Data (i = " << i << ", k = " << k << ", [" << toNumber(a, i) << ' ' << toNumber(b, i) << "]):  " << result << "    END!\n";
-#endif
-    return result;
 }
 
 int main()
@@ -171,19 +171,7 @@ int main()
     auto l = splitNumber(p);
     auto r = splitNumber(q);
 
-#ifdef DEBUG_MODE
-    printArr(l.data(), l.data() + 10);
-    cerr << '\n';
-    printArr(r.data(), r.data() + 10);
-    cerr << '\n';
-#endif
-    long long result = 0;
-    for (int n_k = k; n_k <= 81; n_k += k)
-    {
-        result += count(l, r, 9, n_k);
-    }
-
-    cout << result;
+    cout << Modulus(k).countBoth(l, r, 9, 0);
 
     return 0;
 }
