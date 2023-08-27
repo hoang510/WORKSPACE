@@ -44,7 +44,7 @@ public:
 #endif
 private:
     vector<long long> data;
-    const int size;
+    int size;
 };
 
 typedef char Digit;
@@ -95,17 +95,17 @@ class Solve : private Modulus
 public:
     Solve(int modulo) : Modulus(modulo), ref(buildDigitsRef()), frequencyTable(buildFrequencyTable(10)) {}
 
-    long long countMid(int i, Digit l, Digit r, Number remain) const
+    long long countMid(int layer, Digit l, Digit r, Number remain) const
     {
         if (!(l >= 0 && l <= r && r <= 9))
             return 0;
 
-        if (i == 0)
+        if (layer == 0)
         {
             long long result = 0;
             for (int i = l; i <= r; i++)
             {
-                result += plus(remain, ref[i]) == 0;
+                result += plus(remain, ref[i].second) == 0;
             }
             return result;
         }
@@ -113,13 +113,15 @@ public:
         long long result = 0;
         for (int i = l; i <= r; i++)
         {
-            result += frequencyTable[i - 1].at(minus(0, plus(remain, ref[i])));
+            result += frequencyTable[layer - 1].at(minus(0, plus(remain, ref[i].second)));
         }
+
+        return result;
     }
 
     long long countBottom(const vector<Digit> &a, int i, int remain) const
     {
-        long long bottom = (i > 0 ? countBottom(a, i - 1, minus(remain, ref[a[i]].second)) : 0);
+        long long bottom = (i > 0 ? countBottom(a, i - 1, plus(remain, ref[a[i]].second)) : 0);
         long long mid = (countMid(i, a[i] + (i > 0), 9, remain));
 
 #ifdef DEBUG_MODE
@@ -135,7 +137,7 @@ public:
     long long countTop(const vector<Digit> &a, int i, int remain) const
     {
 
-        long long top = (i > 0 ? countTop(a, i - 1, minus(remain, ref[a[i]].second)) : 0);
+        long long top = (i > 0 ? countTop(a, i - 1, plus(remain, ref[a[i]].second)) : 0);
         long long mid = (countMid(i, 0, a[i] - (i > 0), remain));
 
 #ifdef DEBUG_MODE
@@ -151,10 +153,10 @@ public:
     long long countBoth(const vector<Digit> &a, const vector<Digit> &b, int i, int remain) const
     {
         if (a[i] == b[i])
-            return countBoth(a, b, i - 1, minus(remain, ref[a[i]].second));
+            return countBoth(a, b, i - 1, plus(remain, ref[a[i]].second));
         long long mid = (countMid(i, a[i] + 1, b[i] - 1, remain));
-        long long bottom(i > 0 ? countBottom(a, i - 1, minus(remain, ref[a[i]].second)) : 0);
-        long long top = (i > 0 ? countTop(b, i - 1, minus(remain, ref[b[i]].second))
+        long long bottom(i > 0 ? countBottom(a, i - 1, plus(remain, ref[a[i]].second)) : 0);
+        long long top = (i > 0 ? countTop(b, i - 1, plus(remain, ref[b[i]].second))
                                : 0);
 
 #ifdef DEBUG_MODE

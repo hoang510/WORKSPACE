@@ -1,5 +1,2 @@
-.vscode
-*.exe
-SOMM.exe
-SOMM.OUT
-*.log
+*
+!.CPP
