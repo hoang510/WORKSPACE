@@ -10,9 +10,8 @@ struct InstantSum
 {
 public:
     InstantSum() {}
-    InstantSum(const vector<long long> &inputArray)
+    InstantSum(const vector<long long> &inputArray) : size(inputArray.size())
     {
-        size = inputArray.size();
         this->data.resize(size);
         partial_sum(inputArray.begin(), inputArray.end(), data.begin());
     }
@@ -20,29 +19,32 @@ public:
     inline long long sum(int l, int r) const
     {
         const auto &data = this->data;
-        if (l < 0 || l >= this->size)
-            throw "Invalid Argument";
         return data[min(r, size - 1)] - (l > 0 ? data[l - 1] : 0);
+    }
+
+    inline long long at(int i) const
+    {
+        return this->sum(i, i);
     }
 
     inline long long sumRound() const
     {
         return data.back();
     }
-
+#ifdef DEBUG_MODE
     void print(string Label)
     {
-        cerr << Label << ": "; 
+        cerr << Label << ": ";
         for (auto i : data)
         {
             cerr << i << ' ';
         }
         cerr << '\n';
     }
-
+#endif
 private:
     vector<long long> data;
-    int size;
+    const int size;
 };
 
 typedef char Digit;
@@ -51,21 +53,20 @@ class Modulus
 {
 public:
     typedef int Number;
-    Modulus(int modulo) : modulo(modulo)
-    {
-    }
 
-    inline int plus(Number a, Number b) const
+    Modulus(int modulo) : modulo(modulo) {}
+
+    inline int plus(Modulus::Number a, Modulus::Number b) const
     {
-        Number result = a + b;
+        Modulus::Number result = a + b;
         if (result >= modulo)
             result -= modulo;
         return result;
     }
 
-    inline int minus(Number a, Number b) const
+    inline int minus(Modulus::Number a, Modulus::Number b) const
     {
-        Number result = a - b;
+        Modulus::Number result = a - b;
         if (result < 0)
             result += modulo;
         return result;
@@ -75,6 +76,7 @@ protected:
     const int modulo;
 };
 
+#ifdef DEBUG_MODE
 string toNumber(vector<Digit> a, int i)
 {
     string result = "";
@@ -86,6 +88,8 @@ string toNumber(vector<Digit> a, int i)
     return result;
 }
 
+#endif
+
 class Solve : private Modulus
 {
 public:
@@ -95,18 +99,22 @@ public:
     {
         if (!(l >= 0 && l <= r && r <= 9))
             return 0;
-        const auto &r_l = ref[l];
-        const auto &r_r = ref[r];
 
-        if (i-- == 0)
+        if (i == 0)
         {
-            Number d_l = minus(remain, r_r.second);
-            Number d_r = minus(remain, r_l.second);
-            return (r_r.first - r_l.first) + (d_l == 0 || d_l > d_r); 
+            long long result = 0;
+            for (int i = l; i <= r; i++)
+            {
+                result += plus(remain, ref[i]) == 0;
+            }
+            return result;
         }
 
-        return 
-               frequencyTable[i].sum(minus(remain, r_r.second), minus(remain, r_l.second));
+        long long result = 0;
+        for (int i = l; i <= r; i++)
+        {
+            result += frequencyTable[i - 1].at(minus(0, plus(remain, ref[i])));
+        }
     }
 
     long long countBottom(const vector<Digit> &a, int i, int remain) const
@@ -117,7 +125,7 @@ public:
 #ifdef DEBUG_MODE
         cerr << '\n'
              << " - Left side: " << toNumber(a, i) << '\n';
-             cerr << "Remain: " << remain << '\n';
+        cerr << "Remain: " << remain << '\n';
         cerr << "Bottom: " << bottom << '\n';
         cerr << "Mid: " << mid << "\n";
 #endif
@@ -128,12 +136,12 @@ public:
     {
 
         long long top = (i > 0 ? countTop(a, i - 1, minus(remain, ref[a[i]].second)) : 0);
-        long long mid = (countMid(i, 0, a[i] - (i > 0),remain));
+        long long mid = (countMid(i, 0, a[i] - (i > 0), remain));
 
 #ifdef DEBUG_MODE
         cerr << '\n'
              << " - Right side: " << toNumber(a, i) << '\n';
-             cerr << "Remain: " << remain << '\n';
+        cerr << "Remain: " << remain << '\n';
         cerr << "Top: " << top << '\n';
         cerr << "Mid: " << mid << "\n";
 #endif
@@ -151,8 +159,8 @@ public:
 
 #ifdef DEBUG_MODE
         cerr << '\n'
-             << " - Both side: " << toNumber(a, i) << ' ' << toNumber(b, i) <<'\n';
-             cerr << "Remain: " << remain << '\n';
+             << " - Both side: " << toNumber(a, i) << ' ' << toNumber(b, i) << '\n';
+        cerr << "Remain: " << remain << '\n';
         cerr << "Top: " << top << '\n';
         cerr << "Mid: " << mid << "\n";
         cerr << "Bottom: " << bottom << '\n';
@@ -170,9 +178,9 @@ private:
         {
             a = move(buildA(a));
             data[i] = InstantSum(a);
-            #ifdef DEBUG_MODE
-                data[i].print("Data " + to_string(i));
-            #endif
+#ifdef DEBUG_MODE
+            data[i].print("Data " + to_string(i));
+#endif
         }
         return data;
     }
@@ -205,7 +213,6 @@ private:
     const vector<pair<int, Number>> ref;
     const vector<InstantSum> frequencyTable;
 };
-
 
 auto splitNumber(int n)
 {
